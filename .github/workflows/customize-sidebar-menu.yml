@@ -61,7 +61,7 @@ jobs:
               'files': 'FILES',
           }
 
-          RX0, RY0, RX1, RY1 = 12, 9, 104, 28
+          RX0, RY0, RX1, RY1 = 16, 10, 98, 27
 
           def rgb(path):
               return np.asarray(Image.open(path).convert('RGB'), dtype=np.int16)
@@ -106,7 +106,7 @@ jobs:
                   region = regions[key]
                   bg = blank_region.astype(np.int16)
                   diff = np.max(np.abs(region.astype(np.int16) - bg), axis=2)
-                  mask = diff >= 24
+                  mask = diff >= 48
                   col_counts = mask.sum(axis=0)
                   mask[:, col_counts < 2] = False
 

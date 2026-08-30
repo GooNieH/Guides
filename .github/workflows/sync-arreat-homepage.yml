@@ -133,9 +133,12 @@ jobs:
             display: none !important;
           }
 
-          /* Image 3: hide only the Diablo II Expansion artwork; keep its 116x82 slot. */
+          /* Image 3: hide the Diablo II artwork but preserve the right edge and
+             bottom trim that complete the menu frame. Keep the 116x82 slot. */
           img[name="logo"][src*="d2-logo-"] {
-            visibility: hidden !important;
+            visibility: visible !important;
+            -webkit-clip-path: polygon(96% 0, 100% 0, 100% 100%, 0 100%, 0 84%, 96% 84%);
+            clip-path: polygon(96% 0, 100% 0, 100% 100%, 0 100%, 0 84%, 96% 84%);
           }
 
           /* Image 4: remove only the sidebar cell containing the lower Battle.net logo. */
@@ -170,5 +173,5 @@ jobs:
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m 'Apply cleaned guide chrome and reserved logo slot'
+          git commit -m 'Preserve menu trim while reserving logo slot'
           git push

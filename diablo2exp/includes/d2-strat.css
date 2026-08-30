@@ -42,9 +42,8 @@ body > table[height="18"][width="100%"] {
   display: none !important;
 }
 
-/* Image 3: hide the Diablo II artwork but keep the pieces of the original
-   image that complete the menu frame: the narrow right edge and bottom trim.
-   The full 116x82 layout slot remains reserved for a future overlay. */
+/* Image 3: hide the Diablo II artwork but preserve the right edge and
+   bottom trim that complete the menu frame. Keep the 116x82 slot. */
 img[name="logo"][src*="d2-logo-"] {
   visibility: visible !important;
   -webkit-clip-path: polygon(96% 0, 100% 0, 100% 100%, 0 100%, 0 84%, 96% 84%);

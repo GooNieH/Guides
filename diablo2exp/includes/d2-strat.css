@@ -58,12 +58,11 @@ img[name="logo"][src*="d2-logo-"] {
   clip-path: polygon(96% 0, 100% 0, 100% 100%, 0 100%, 0 84%, 96% 84%);
 }
 
-/* Image 4: remove only the sidebar cell containing the lower Battle.net logo. */
-td:has(> a > img[src$="/blizz-logo.gif"]) {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-  padding: 0 !important;
+/* Image 4: keep the original lower sidebar cell so its smoky background
+   continues naturally below the menu. Hide only the Battle.net artwork. */
+td:has(> a > img[src$="/blizz-logo.gif"]) > a > img[src$="/blizz-logo.gif"] {
+  visibility: hidden !important;
+  opacity: 0 !important;
 }
 
 /* Image 1: remove only the cell containing the Exit/close button. */

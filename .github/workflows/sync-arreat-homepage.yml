@@ -102,26 +102,18 @@ jobs:
               html = html.replace('</head>', page_css + '\n</head>', 1)
               p.write_text(html, encoding='utf-8')
 
-          # Every classic guide page loads this shared stylesheet. Target only
-          # the section-title graphic table (NEWS, BASICS, ITEMS, etc.), leaving
-          # the outer black content box and all other artwork untouched.
+          # Every classic guide page loads this shared stylesheet. Hide only
+          # the three cells whose background is headers/header-back.gif. Do not
+          # use :has() on ancestor tables because the legacy layout nests tables
+          # and an ancestor match can hide the entire page.
           shared_css = Path('diablo2exp/includes/d2-strat.css')
           css = shared_css.read_text(encoding='utf-8', errors='replace')
-          marker = '/* Guides: remove classic section title ribbons site-wide */'
+          marker = '/* Guides: remove only the three cells that form classic section-title ribbons. */'
           if marker not in css:
               css += r'''
 
-          /* Guides: remove classic section title ribbons site-wide */
-          table:has(td[background*="headers/header-back.gif"]) {
-            display: none !important;
-          }
-          table:has(td[background*="headers/header-back.gif"]) + br {
-            display: none !important;
-          }
-
-          /* Fallback for browsers without :has(): collapse the three cells
-             that make up the same section-title ribbon. */
-          td[background*="headers/header-back.gif"] {
+          /* Guides: remove only the three cells that form classic section-title ribbons. */
+          td[background*="/headers/header-back.gif"] {
             display: none !important;
             width: 0 !important;
             height: 0 !important;
@@ -145,5 +137,5 @@ jobs:
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m 'Remove section title ribbons across guide pages'
+          git commit -m 'Safely remove section title ribbon cells'
           git push

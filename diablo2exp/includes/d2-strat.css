@@ -34,3 +34,31 @@ td[background*="/headers/header-back.gif"] {
   font-size: 0 !important;
   background: none !important;
 }
+
+/* Guides: remove legacy chrome while keeping the future logo slot. */
+/* Image 2: remove the 18px global Battle.net/game strip and reclaim its space. */
+body > table[height="18"][width="100%"] {
+  display: none !important;
+}
+
+/* Image 3: hide only the Diablo II Expansion artwork; keep its 116x82 slot. */
+img[name="logo"][src*="d2-logo-"] {
+  visibility: hidden !important;
+}
+
+/* Image 4: remove only the sidebar cell containing the lower Battle.net logo. */
+td:has(> a > img[src$="/blizz-logo.gif"]) {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  padding: 0 !important;
+}
+
+/* Image 1: remove only the cell containing the Exit/close button. */
+td:has(> br + a > img[name="exit"]),
+td:has(> a > img[name="exit"]) {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  padding: 0 !important;
+}

@@ -35,6 +35,7 @@ td[background*="/headers/header-back.gif"] {
   background: none !important;
 }
 
+
 /* Guides: remove legacy chrome while keeping the future logo slot. */
 /* Image 2: remove the 18px global Battle.net/game strip and reclaim its space. */
 body > table[height="18"][width="100%"] {

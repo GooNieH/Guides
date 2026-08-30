@@ -53,18 +53,16 @@ jobs:
                 curl -fsSL "https://classic.battle.net${asset}" -o "$target"
               done
 
-      - name: Apply requested visual cleanup without moving the layout
+      - name: Apply requested visual cleanup to Home and News
         shell: bash
         run: |
           set -euxo pipefail
           python - <<'PY'
           from pathlib import Path
 
-          p = Path('index.html')
-          html = p.read_text(encoding='utf-8', errors='replace')
           css = r'''
           <style id="guides-homepage-cleanup">
-            /* Hide only text inside the original central black content panel. */
+            /* Visually clear the original central black content panel. */
             td[background*="blackbg.gif"],
             td[background*="blackbg.gif"] * {
               color: transparent !important;
@@ -79,16 +77,16 @@ jobs:
               opacity: 1 !important;
             }
 
-            /* Remove the Arreat Summit logo + barbarian shown in image 2,
-               but preserve their original dimensions so nothing shifts. */
+            /* Remove the old Arreat Summit logo + barbarian while preserving
+               their dimensions so the surrounding frame does not shift. */
             td[background*="blackbg.gif"] img[src*="arreat-summit.gif"],
             td[background*="blackbg.gif"] img[src*="chaos-barbhireable.gif"] {
               visibility: hidden !important;
             }
 
-            /* Remove only the inner gold advertising rectangle and ad image.
+            /* Remove only the inner gold advertising rectangles and ad image.
                Keep ad-back.gif plus the left/right border artwork intact so
-               the original textured header and end ornaments remain visible. */
+               the textured header and ornate end caps remain unchanged. */
             img[src*="ad-top.gif"],
             img[src*="ad-left.gif"],
             img[src*="ad-right.gif"],
@@ -98,8 +96,11 @@ jobs:
             }
           </style>
           '''
-          html = html.replace('</head>', css + '\n</head>', 1)
-          p.write_text(html, encoding='utf-8')
+
+          for p in (Path('index.html'), Path('diablo2exp/index.html')):
+              html = p.read_text(encoding='utf-8', errors='replace')
+              html = html.replace('</head>', css + '\n</head>', 1)
+              p.write_text(html, encoding='utf-8')
           PY
 
       - name: Commit the faithful local mirror
@@ -113,5 +114,5 @@ jobs:
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m 'Preserve header chrome and remove inner gold ad rectangle'
+          git commit -m 'Clean News page content and match header treatment'
           git push

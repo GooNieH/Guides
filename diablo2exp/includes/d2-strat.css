@@ -23,3 +23,23 @@ a.tiny:link		{ font-family: Arial,Helvetica,Sans-Serif; color: #B4AC92; font-wei
 a.tiny:visited	{ font-family: Arial,Helvetica,Sans-Serif; color: #928A72; font-weight: normal; font-size: 8pt }
 a.tiny:active	{ font-family: Arial,Helvetica,Sans-Serif; color: #ffffff; font-weight: normal; font-size: 8pt }
 a.tiny:hover	{ font-family: Arial,Helvetica,Sans-Serif; color: #ffffff; font-weight: normal; font-size: 8pt }
+
+/* Guides: remove classic section title ribbons site-wide */
+table:has(td[background*="headers/header-back.gif"]) {
+  display: none !important;
+}
+table:has(td[background*="headers/header-back.gif"]) + br {
+  display: none !important;
+}
+
+/* Fallback for browsers without :has(): collapse the three cells
+   that make up the same section-title ribbon. */
+td[background*="headers/header-back.gif"] {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  padding: 0 !important;
+  line-height: 0 !important;
+  font-size: 0 !important;
+  background: none !important;
+}

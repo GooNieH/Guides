@@ -58,15 +58,24 @@ img[name="logo"][src*="d2-logo-"] {
   clip-path: polygon(96% 0, 100% 0, 100% 100%, 0 100%, 0 84%, 96% 84%);
 }
 
-/* Image 4: blend the lower sidebar into the ornate menu bottom.
-   Use a logo-free crop of the original smoky Battle.net texture, then let
-   a small faded slice of menu-bottom.gif continue into it so the corner
-   no longer ends on a perfectly straight horizontal seam. */
+/* Image 4: keep the original lower sidebar cell, but replace the Battle.net
+   art with a clean logo-free texture panel so the transition stays natural. */
 td:has(> a > img[src$="/blizz-logo.gif"]) {
   width: 116px !important;
-  height: 78px !important;
   padding: 0 !important;
   vertical-align: top !important;
+}
+
+td:has(> a > img[src$="/blizz-logo.gif"]) > a {
+  display: block !important;
+  width: 116px !important;
+  height: 78px !important;
+  background: url('/assets/blizz-clean.jpg') left top / 116px 78px no-repeat !important;
+}
+
+td:has(> a > img[src$="/blizz-logo.gif"]) > a > img[src$="/blizz-logo.gif"] {
+  visibility: hidden !important;
+  opacity: 0 !important;
 }
 
 /* Image 4: keep the original lower sidebar cell, but replace the Battle.net

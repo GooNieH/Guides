@@ -17,93 +17,177 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install image tooling
-        run: python -m pip install --quiet pillow
+        run: python -m pip install --quiet pillow numpy
 
-      - name: Change NEWS to SP CALCULATOR
+      - name: Fetch pristine classic menu artwork
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p /tmp/classic-menu
+          for item in news basics classes skills items monsters npcs quests shrines maps faq files; do
+            for state in off ovr act; do
+              curl -fsSL \
+                "https://classic.battle.net/images/battle/diablo2exp/images/menu/menu-${item}-${state}.gif" \
+                -o "/tmp/classic-menu/menu-${item}-${state}.gif"
+            done
+          done
+
+      - name: Rebuild NEWS as SP CALCULATOR from original Diablo II letterforms
         shell: bash
         run: |
           set -euxo pipefail
           python - <<'PY'
           from pathlib import Path
-          from PIL import Image, ImageDraw, ImageFont, ImageFilter
+          from collections import defaultdict
+          import numpy as np
+          from PIL import Image
 
-          menu = Path('images/battle/diablo2exp/images/menu')
-          files = {
-              'off': menu / 'menu-news-off.gif',
-              'ovr': menu / 'menu-news-ovr.gif',
-              'act': menu / 'menu-news-act.gif',
+          SRC = Path('/tmp/classic-menu')
+          OUT = Path('images/battle/diablo2exp/images/menu')
+          TARGET = 'SP CALCULATOR'
+
+          labels = {
+              'news': 'NEWS',
+              'basics': 'BASICS',
+              'classes': 'CLASSES',
+              'skills': 'SKILLS',
+              'items': 'ITEMS',
+              'monsters': 'MONSTERS',
+              'npcs': 'NPCS',
+              'quests': 'QUESTS',
+              'shrines': 'SHRINES',
+              'maps': 'MAPS',
+              'faq': 'FAQ',
+              'files': 'FILES',
           }
 
-          font_candidates = [
-              '/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf',
-              '/usr/share/fonts/truetype/dejavu/DejaVuSerifCondensed-Bold.ttf',
-          ]
-          font_path = next((p for p in font_candidates if Path(p).exists()), None)
-          if not font_path:
-              raise SystemExit('Could not find a suitable condensed font')
+          RX0, RY0, RX1, RY1 = 12, 9, 104, 28
 
-          LABEL = 'SP CALCULATOR'
+          def rgb(path):
+              return np.asarray(Image.open(path).convert('RGB'), dtype=np.int16)
 
-          def clean_label_area(img):
-              # Keep every pixel of the original border. Only rebuild the flat
-              # inner plaque where the old NEWS lettering lives.
-              x0, y0, x1, y1 = 17, 8, 99, 29
-              w, h = x1 - x0, y1 - y0
+          def active_runs(mask):
+              cols = mask.any(axis=0)
+              runs = []
+              start = None
+              for x, on in enumerate(cols):
+                  if on and start is None:
+                      start = x
+                  elif not on and start is not None:
+                      runs.append((start, x))
+                      start = None
+              if start is not None:
+                  runs.append((start, len(cols)))
+              return runs
 
-              left = img.crop((17, y0, 35, y1)).resize((w, h), Image.Resampling.BICUBIC)
-              right = img.crop((81, y0, 99, y1)).resize((w, h), Image.Resampling.BICUBIC)
+          def make_state(state):
+              originals = {
+                  key: rgb(SRC / f'menu-{key}-{state}.gif')
+                  for key in labels
+              }
 
-              # Smooth horizontal blend from the clean left/right stone texture.
-              mask = Image.new('L', (w, h))
-              px = mask.load()
-              for x in range(w):
-                  value = int(255 * x / max(1, w - 1))
-                  for y in range(h):
-                      px[x, y] = value
-              patch = Image.composite(right, left, mask).filter(ImageFilter.GaussianBlur(0.35))
-              img.paste(patch, (x0, y0))
-              return img
+              stack = np.stack(list(originals.values()), axis=0)
+              blank = np.median(stack, axis=0).astype(np.uint8)
 
-          def fit_font(draw, text, max_width=80):
-              for size in range(10, 5, -1):
-                  font = ImageFont.truetype(font_path, size=size)
-                  box = draw.textbbox((0, 0), text, font=font, stroke_width=0)
-                  if box[2] - box[0] <= max_width:
-                      return font
-              return ImageFont.truetype(font_path, size=6)
+              news_path = SRC / f'menu-news-{state}.gif'
+              original_news = Image.open(news_path)
+              base = np.asarray(original_news.convert('RGB'), dtype=np.uint8).copy()
+              base[RY0:RY1, RX0:RX1] = blank[RY0:RY1, RX0:RX1]
 
-          def relabel(path, state):
-              original = Image.open(path)
-              img = original.convert('RGB')
-              img = clean_label_area(img)
-              draw = ImageDraw.Draw(img)
-              font = fit_font(draw, LABEL)
-              box = draw.textbbox((0, 0), LABEL, font=font)
-              tw, th = box[2] - box[0], box[3] - box[1]
-              x = (116 - tw) // 2
-              y = 18 - th // 2 - box[1]
+              glyphs = defaultdict(list)
+              diagnostics = []
 
-              if state == 'act':
-                  # Active/current-page state: warm Diablo-gold lettering.
-                  draw.text((x + 1, y + 1), LABEL, font=font, fill=(26, 19, 10))
-                  draw.text((x, y), LABEL, font=font, fill=(205, 158, 62))
-              elif state == 'ovr':
-                  # Hover state: slightly brighter embossed lettering.
-                  draw.text((x, y - 1), LABEL, font=font, fill=(178, 169, 133))
-                  draw.text((x, y), LABEL, font=font, fill=(28, 25, 19))
-              else:
-                  # Normal state: same dark engraved look as the classic buttons.
-                  draw.text((x, y - 1), LABEL, font=font, fill=(145, 138, 111))
-                  draw.text((x, y), LABEL, font=font, fill=(22, 20, 16))
+              for key, label in labels.items():
+                  img = originals[key]
+                  region = img[RY0:RY1, RX0:RX1]
+                  bg = blank[RY0:RY1, RX0:RX1].astype(np.int16)
+                  diff = np.max(np.abs(region.astype(np.int16) - bg), axis=2)
+                  mask = diff >= 24
+                  col_counts = mask.sum(axis=0)
+                  mask[:, col_counts < 2] = False
 
-              # GIF keeps the exact dimensions and remains compatible with the
-              # original JavaScript image rollover system.
-              img.save(path, format='GIF', optimize=True)
+                  runs = active_runs(mask)
+                  chars = [c for c in label if c != ' ']
+                  while len(runs) > len(chars):
+                      gaps = [runs[i+1][0] - runs[i][1] for i in range(len(runs)-1)]
+                      j = int(np.argmin(gaps))
+                      runs[j:j+2] = [(runs[j][0], runs[j+1][1])]
 
-          for state, path in files.items():
-              if not path.exists():
-                  raise SystemExit(f'Missing menu asset: {path}')
-              relabel(path, state)
+                  diagnostics.append(f'{state} {key}: runs={len(runs)} chars={len(chars)} {runs}')
+                  if len(runs) != len(chars):
+                      continue
+
+                  for ch, (xa, xb) in zip(chars, runs):
+                      submask = mask[:, xa:xb]
+                      ys, xs = np.where(submask)
+                      if len(xs) == 0:
+                          continue
+                      ya, yb = int(ys.min()), int(ys.max()) + 1
+                      xa2, xb2 = int(xs.min()), int(xs.max()) + 1
+                      patch = region[ya:yb, xa+xa2:xa+xb2].astype(np.uint8)
+                      pmask = submask[ya:yb, xa2:xb2]
+                      glyphs[ch].append((patch, pmask))
+
+              required = set(TARGET.replace(' ', ''))
+              missing = sorted(required - set(glyphs))
+              print('\n'.join(diagnostics))
+              if missing:
+                  raise SystemExit(f'Missing extracted glyphs for state {state}: {missing}')
+
+              chosen = {ch: glyphs[ch][0] for ch in required}
+              gap = 1
+              space = 4
+              pieces = []
+              total_w = 0
+              for ch in TARGET:
+                  if ch == ' ':
+                      pieces.append((None, None, space))
+                      total_w += space
+                  else:
+                      patch, pmask = chosen[ch]
+                      w = patch.shape[1]
+                      pieces.append((patch, pmask, w))
+                      total_w += w
+                  total_w += gap
+              total_w -= gap
+
+              max_w = RX1 - RX0 - 6
+              scale = min(1.0, max_w / total_w)
+              canvas_h = RY1 - RY0
+              text_layer = np.zeros((canvas_h, total_w, 3), dtype=np.uint8)
+              alpha = np.zeros((canvas_h, total_w), dtype=np.uint8)
+
+              x = 0
+              baseline = 15
+              for patch, pmask, w in pieces:
+                  if patch is None:
+                      x += w + gap
+                      continue
+                  h = patch.shape[0]
+                  y = max(0, min(canvas_h - h, baseline - h))
+                  text_layer[y:y+h, x:x+w] = patch
+                  alpha[y:y+h, x:x+w][pmask] = 255
+                  x += w + gap
+
+              layer_img = Image.fromarray(text_layer, 'RGB')
+              alpha_img = Image.fromarray(alpha, 'L')
+              if scale < 1.0:
+                  new_w = max(1, int(round(total_w * scale)))
+                  layer_img = layer_img.resize((new_w, canvas_h), Image.Resampling.NEAREST)
+                  alpha_img = alpha_img.resize((new_w, canvas_h), Image.Resampling.NEAREST)
+
+              result = Image.fromarray(base, 'RGB')
+              x0 = (116 - layer_img.width) // 2
+              result.paste(layer_img, (x0, RY0), alpha_img)
+
+              palette = original_news.convert('P')
+              result = result.quantize(palette=palette, dither=Image.Dither.NONE)
+              out_path = OUT / f'menu-news-{state}.gif'
+              result.save(out_path, format='GIF', optimize=False)
+              print(f'wrote {out_path}: {result.size}, text_width={layer_img.width}px')
+
+          for state in ('off', 'ovr', 'act'):
+              make_state(state)
           PY
 
       - name: Commit customized menu artwork
@@ -116,5 +200,5 @@ jobs:
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m 'Change News button label to SP Calculator'
+          git commit -m 'Match SP Calculator button to classic menu lettering'
           git push

@@ -86,13 +86,9 @@ jobs:
               visibility: hidden !important;
             }
 
-            /* Remove the gold advertising boxes shown in image 3 while
-               preserving the original 75px header spacing/layout. */
-            td[background*="ad-back.gif"] {
-              background-image: none !important;
-            }
-            img[src*="ad-leftborder.gif"],
-            img[src*="ad-rightborder.gif"],
+            /* Remove only the inner gold advertising rectangle and ad image.
+               Keep ad-back.gif plus the left/right border artwork intact so
+               the original textured header and end ornaments remain visible. */
             img[src*="ad-top.gif"],
             img[src*="ad-left.gif"],
             img[src*="ad-right.gif"],
@@ -117,5 +113,5 @@ jobs:
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m 'Fix menu rollovers and remove requested homepage artwork'
+          git commit -m 'Preserve header chrome and remove inner gold ad rectangle'
           git push

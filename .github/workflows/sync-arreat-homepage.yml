@@ -156,25 +156,40 @@ jobs:
             clip-path: polygon(96% 0, 100% 0, 100% 100%, 0 100%, 0 84%, 96% 84%);
           }
 
-          /* Image 4: keep the original lower sidebar cell and reuse only the lower
-             decorative part of blizz-logo.gif. This brings the smoky/speckled trim
-             directly under the final menu button without restoring the Battle.net logo. */
+          /* Image 4: blend the lower sidebar into the ornate menu bottom.
+             Use a logo-free crop of the original smoky Battle.net texture, then let
+             a small faded slice of menu-bottom.gif continue into it so the corner
+             no longer ends on a perfectly straight horizontal seam. */
           td:has(> a > img[src$="/blizz-logo.gif"]) {
-            position: relative !important;
             width: 116px !important;
+            height: 78px !important;
             padding: 0 !important;
             vertical-align: top !important;
           }
 
-          td:has(> a > img[src$="/blizz-logo.gif"])::before {
+          td:has(> a > img[src$="/blizz-logo.gif"]) > a {
+            display: block !important;
+            position: relative !important;
+            width: 116px !important;
+            height: 78px !important;
+            margin-top: -2px !important;
+            overflow: hidden !important;
+            background: url('/images/battle/diablo2exp/images/blizz-logo.gif') left -30px / 116px 108px no-repeat !important;
+          }
+
+          td:has(> a > img[src$="/blizz-logo.gif"]) > a::before {
             content: "";
             position: absolute;
-            top: -3px;
+            z-index: 2;
+            top: 0;
             left: 0;
             width: 116px;
-            height: 32px;
+            height: 14px;
             pointer-events: none;
-            background: url('/images/battle/diablo2exp/images/blizz-logo.gif') left bottom / 116px 78px no-repeat;
+            opacity: 0.72;
+            background: url('/images/battle/diablo2exp/images/menu/menu-bottom.gif') left bottom / 116px 27px no-repeat;
+            -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 28%, transparent 100%);
+            mask-image: linear-gradient(to bottom, #000 0%, #000 28%, transparent 100%);
           }
 
           td:has(> a > img[src$="/blizz-logo.gif"]) > a > img[src$="/blizz-logo.gif"] {
@@ -206,5 +221,5 @@ jobs:
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m 'Restore decorative trim below sidebar menu'
+          git commit -m 'Blend ornate menu trim into lower sidebar'
           git push

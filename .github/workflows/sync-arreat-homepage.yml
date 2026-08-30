@@ -35,7 +35,25 @@ jobs:
           rsync -a mirror/ ./
           cp mirror/diablo2exp/index.html index.html
 
-      - name: Hide only text inside the black content panel
+      - name: Fetch JavaScript rollover artwork
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          # wget only sees assets referenced directly by HTML/CSS. The original
+          # menu rollover artwork is referenced dynamically from d2.js, so fetch
+          # every image path declared there as well. This keeps the original
+          # mouse-over effect without broken-image/ALT-text flashes.
+          grep -oE '"/[^" ]+\.(gif|jpg|jpeg|png)"' diablo2exp/includes/d2.js \
+            | tr -d '"' \
+            | sort -u \
+            | while read -r asset; do
+                target="${asset#/}"
+                mkdir -p "$(dirname "$target")"
+                curl -fsSL "https://classic.battle.net${asset}" -o "$target"
+              done
+
+      - name: Apply requested visual cleanup without moving the layout
         shell: bash
         run: |
           set -euxo pipefail
@@ -45,9 +63,8 @@ jobs:
           p = Path('index.html')
           html = p.read_text(encoding='utf-8', errors='replace')
           css = r'''
-          <style id="guides-black-panel-text-removal">
-            /* Preserve the original Arreat Summit layout and artwork.
-               Only text inside the central black content panel is hidden. */
+          <style id="guides-homepage-cleanup">
+            /* Hide only text inside the original central black content panel. */
             td[background*="blackbg.gif"],
             td[background*="blackbg.gif"] * {
               color: transparent !important;
@@ -60,6 +77,28 @@ jobs:
             td[background*="blackbg.gif"] img {
               visibility: visible !important;
               opacity: 1 !important;
+            }
+
+            /* Remove the Arreat Summit logo + barbarian shown in image 2,
+               but preserve their original dimensions so nothing shifts. */
+            td[background*="blackbg.gif"] img[src*="arreat-summit.gif"],
+            td[background*="blackbg.gif"] img[src*="chaos-barbhireable.gif"] {
+              visibility: hidden !important;
+            }
+
+            /* Remove the gold advertising boxes shown in image 3 while
+               preserving the original 75px header spacing/layout. */
+            td[background*="ad-back.gif"] {
+              background-image: none !important;
+            }
+            img[src*="ad-leftborder.gif"],
+            img[src*="ad-rightborder.gif"],
+            img[src*="ad-top.gif"],
+            img[src*="ad-left.gif"],
+            img[src*="ad-right.gif"],
+            img[src*="ad-bot.gif"],
+            img[src*="/images/ads/"] {
+              visibility: hidden !important;
             }
           </style>
           '''
@@ -78,5 +117,5 @@ jobs:
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m 'Mirror original Arreat Summit homepage and hide black-panel text'
+          git commit -m 'Fix menu rollovers and remove requested homepage artwork'
           git push

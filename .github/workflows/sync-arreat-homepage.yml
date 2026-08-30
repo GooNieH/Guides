@@ -156,8 +156,27 @@ jobs:
             clip-path: polygon(96% 0, 100% 0, 100% 100%, 0 100%, 0 84%, 96% 84%);
           }
 
-          /* Image 4: keep the original lower sidebar cell so its smoky background
-             continues naturally below the menu. Hide only the Battle.net artwork. */
+          /* Image 4: keep the original lower sidebar cell and reuse only the lower
+             decorative part of blizz-logo.gif. This brings the smoky/speckled trim
+             directly under the final menu button without restoring the Battle.net logo. */
+          td:has(> a > img[src$="/blizz-logo.gif"]) {
+            position: relative !important;
+            width: 116px !important;
+            padding: 0 !important;
+            vertical-align: top !important;
+          }
+
+          td:has(> a > img[src$="/blizz-logo.gif"])::before {
+            content: "";
+            position: absolute;
+            top: -3px;
+            left: 0;
+            width: 116px;
+            height: 32px;
+            pointer-events: none;
+            background: url('/images/battle/diablo2exp/images/blizz-logo.gif') left bottom / 116px 78px no-repeat;
+          }
+
           td:has(> a > img[src$="/blizz-logo.gif"]) > a > img[src$="/blizz-logo.gif"] {
             visibility: hidden !important;
             opacity: 0 !important;
@@ -187,5 +206,5 @@ jobs:
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m 'Blend lower sidebar after Battle.net logo removal'
+          git commit -m 'Restore decorative trim below sidebar menu'
           git push

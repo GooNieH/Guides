@@ -86,21 +86,25 @@ jobs:
                   for key in labels
               }
 
-              stack = np.stack(list(originals.values()), axis=0)
-              blank = np.median(stack, axis=0).astype(np.uint8)
+              regions = {
+                  key: img[RY0:RY1, RX0:RX1]
+                  for key, img in originals.items()
+              }
+              stack = np.stack(list(regions.values()), axis=0)
+              blank_region = np.median(stack, axis=0).astype(np.uint8)
 
               news_path = SRC / f'menu-news-{state}.gif'
               original_news = Image.open(news_path)
               base = np.asarray(original_news.convert('RGB'), dtype=np.uint8).copy()
-              base[RY0:RY1, RX0:RX1] = blank[RY0:RY1, RX0:RX1]
+              base[RY0:RY1, RX0:RX1] = blank_region
 
               glyphs = defaultdict(list)
               diagnostics = []
 
               for key, label in labels.items():
                   img = originals[key]
-                  region = img[RY0:RY1, RX0:RX1]
-                  bg = blank[RY0:RY1, RX0:RX1].astype(np.int16)
+                  region = regions[key]
+                  bg = blank_region.astype(np.int16)
                   diff = np.max(np.abs(region.astype(np.int16) - bg), axis=2)
                   mask = diff >= 24
                   col_counts = mask.sum(axis=0)

@@ -21,6 +21,42 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <meta name="keywords" content="Diablo2, D2, Diablo 2, Diablo II, Guide, Strategy, Rune Words,">
 <meta name="description" content="A Strategy Guide for Diablo II including Items, Skills, and more">
+
+<style id="guides-homepage-cleanup">
+  /* Visually clear the original central black content panel. */
+  td[background*="blackbg.gif"],
+  td[background*="blackbg.gif"] * {
+    color: transparent !important;
+    text-decoration-color: transparent !important;
+    text-shadow: none !important;
+  }
+  td[background*="blackbg.gif"] li::marker {
+    color: transparent !important;
+  }
+  td[background*="blackbg.gif"] img {
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  /* Remove the old Arreat Summit logo + barbarian while preserving
+     their dimensions so the surrounding frame does not shift. */
+  td[background*="blackbg.gif"] img[src*="arreat-summit.gif"],
+  td[background*="blackbg.gif"] img[src*="chaos-barbhireable.gif"] {
+    visibility: hidden !important;
+  }
+
+  /* Remove only the inner gold advertising rectangles and ad image.
+     Keep ad-back.gif plus the left/right border artwork intact so
+     the textured header and ornate end caps remain unchanged. */
+  img[src*="ad-top.gif"],
+  img[src*="ad-left.gif"],
+  img[src*="ad-right.gif"],
+  img[src*="ad-bot.gif"],
+  img[src*="/images/ads/"] {
+    visibility: hidden !important;
+  }
+</style>
+
 </head>
 
 <body background="/images/battle/diablo2exp/images/bg2.jpg" bgcolor=black text="#AFAFAF" link="#928A70" vlink="#928a70" marginwidth=0 marginheight=0 topmargin=0 leftmargin=0><link rel="stylesheet" type="text/css" href="/includes/anylink.css" />
@@ -28,7 +64,7 @@
 <script type="text/javascript" src="/includes/anylink.js">
 
 /***********************************************
-* AnyLink CSS Menu script- © Dynamic Drive DHTML code library (www.dynamicdrive.com)
+* AnyLink CSS Menu script- ï¿½ Dynamic Drive DHTML code library (www.dynamicdrive.com)
 * This notice MUST stay intact for legal use
 * Visit Dynamic Drive at http://www.dynamicdrive.com/ for full source code
 ***********************************************/

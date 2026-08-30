@@ -23,7 +23,7 @@
 <meta name="description" content="A Strategy Guide for Diablo II including Items, Skills, and more">
 
 <style id="guides-homepage-cleanup">
-  /* Hide only text inside the original central black content panel. */
+  /* Visually clear the original central black content panel. */
   td[background*="blackbg.gif"],
   td[background*="blackbg.gif"] * {
     color: transparent !important;
@@ -38,16 +38,16 @@
     opacity: 1 !important;
   }
 
-  /* Remove the Arreat Summit logo + barbarian shown in image 2,
-     but preserve their original dimensions so nothing shifts. */
+  /* Remove the old Arreat Summit logo + barbarian while preserving
+     their dimensions so the surrounding frame does not shift. */
   td[background*="blackbg.gif"] img[src*="arreat-summit.gif"],
   td[background*="blackbg.gif"] img[src*="chaos-barbhireable.gif"] {
     visibility: hidden !important;
   }
 
-  /* Remove only the inner gold advertising rectangle and ad image.
+  /* Remove only the inner gold advertising rectangles and ad image.
      Keep ad-back.gif plus the left/right border artwork intact so
-     the original textured header and end ornaments remain visible. */
+     the textured header and ornate end caps remain unchanged. */
   img[src*="ad-top.gif"],
   img[src*="ad-left.gif"],
   img[src*="ad-right.gif"],

@@ -24,17 +24,8 @@ a.tiny:visited	{ font-family: Arial,Helvetica,Sans-Serif; color: #928A72; font-w
 a.tiny:active	{ font-family: Arial,Helvetica,Sans-Serif; color: #ffffff; font-weight: normal; font-size: 8pt }
 a.tiny:hover	{ font-family: Arial,Helvetica,Sans-Serif; color: #ffffff; font-weight: normal; font-size: 8pt }
 
-/* Guides: remove classic section title ribbons site-wide */
-table:has(td[background*="headers/header-back.gif"]) {
-  display: none !important;
-}
-table:has(td[background*="headers/header-back.gif"]) + br {
-  display: none !important;
-}
-
-/* Fallback for browsers without :has(): collapse the three cells
-   that make up the same section-title ribbon. */
-td[background*="headers/header-back.gif"] {
+/* Guides: remove only the three cells that form classic section-title ribbons. */
+td[background*="/headers/header-back.gif"] {
   display: none !important;
   width: 0 !important;
   height: 0 !important;

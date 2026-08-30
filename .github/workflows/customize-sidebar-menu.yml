@@ -1,0 +1,120 @@
+name: Customize sidebar menu
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/customize-sidebar-menu.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  customize-menu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install image tooling
+        run: python -m pip install --quiet pillow
+
+      - name: Change NEWS to SP CALCULATOR
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageDraw, ImageFont, ImageFilter
+
+          menu = Path('images/battle/diablo2exp/images/menu')
+          files = {
+              'off': menu / 'menu-news-off.gif',
+              'ovr': menu / 'menu-news-ovr.gif',
+              'act': menu / 'menu-news-act.gif',
+          }
+
+          font_candidates = [
+              '/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf',
+              '/usr/share/fonts/truetype/dejavu/DejaVuSerifCondensed-Bold.ttf',
+          ]
+          font_path = next((p for p in font_candidates if Path(p).exists()), None)
+          if not font_path:
+              raise SystemExit('Could not find a suitable condensed font')
+
+          LABEL = 'SP CALCULATOR'
+
+          def clean_label_area(img):
+              # Keep every pixel of the original border. Only rebuild the flat
+              # inner plaque where the old NEWS lettering lives.
+              x0, y0, x1, y1 = 17, 8, 99, 29
+              w, h = x1 - x0, y1 - y0
+
+              left = img.crop((17, y0, 35, y1)).resize((w, h), Image.Resampling.BICUBIC)
+              right = img.crop((81, y0, 99, y1)).resize((w, h), Image.Resampling.BICUBIC)
+
+              # Smooth horizontal blend from the clean left/right stone texture.
+              mask = Image.new('L', (w, h))
+              px = mask.load()
+              for x in range(w):
+                  value = int(255 * x / max(1, w - 1))
+                  for y in range(h):
+                      px[x, y] = value
+              patch = Image.composite(right, left, mask).filter(ImageFilter.GaussianBlur(0.35))
+              img.paste(patch, (x0, y0))
+              return img
+
+          def fit_font(draw, text, max_width=80):
+              for size in range(10, 5, -1):
+                  font = ImageFont.truetype(font_path, size=size)
+                  box = draw.textbbox((0, 0), text, font=font, stroke_width=0)
+                  if box[2] - box[0] <= max_width:
+                      return font
+              return ImageFont.truetype(font_path, size=6)
+
+          def relabel(path, state):
+              original = Image.open(path)
+              img = original.convert('RGB')
+              img = clean_label_area(img)
+              draw = ImageDraw.Draw(img)
+              font = fit_font(draw, LABEL)
+              box = draw.textbbox((0, 0), LABEL, font=font)
+              tw, th = box[2] - box[0], box[3] - box[1]
+              x = (116 - tw) // 2
+              y = 18 - th // 2 - box[1]
+
+              if state == 'act':
+                  # Active/current-page state: warm Diablo-gold lettering.
+                  draw.text((x + 1, y + 1), LABEL, font=font, fill=(26, 19, 10))
+                  draw.text((x, y), LABEL, font=font, fill=(205, 158, 62))
+              elif state == 'ovr':
+                  # Hover state: slightly brighter embossed lettering.
+                  draw.text((x, y - 1), LABEL, font=font, fill=(178, 169, 133))
+                  draw.text((x, y), LABEL, font=font, fill=(28, 25, 19))
+              else:
+                  # Normal state: same dark engraved look as the classic buttons.
+                  draw.text((x, y - 1), LABEL, font=font, fill=(145, 138, 111))
+                  draw.text((x, y), LABEL, font=font, fill=(22, 20, 16))
+
+              # GIF keeps the exact dimensions and remains compatible with the
+              # original JavaScript image rollover system.
+              img.save(path, format='GIF', optimize=True)
+
+          for state, path in files.items():
+              if not path.exists():
+                  raise SystemExit(f'Missing menu asset: {path}')
+              relabel(path, state)
+          PY
+
+      - name: Commit customized menu artwork
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add images/battle/diablo2exp/images/menu/menu-news-*.gif
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'Change News button label to SP Calculator'
+          git push

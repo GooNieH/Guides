@@ -69,14 +69,24 @@ td:has(> a > img[src$="/blizz-logo.gif"]) {
   vertical-align: top !important;
 }
 
+/* Image 4: keep the original lower sidebar cell, but replace the Battle.net
+   art with a clean logo-free texture panel so the transition stays natural. */
+td:has(> a > img[src$="/blizz-logo.gif"]) {
+  width: 116px !important;
+  padding: 0 !important;
+  vertical-align: top !important;
+}
+
 td:has(> a > img[src$="/blizz-logo.gif"]) > a {
   display: block !important;
-  position: relative !important;
   width: 116px !important;
   height: 78px !important;
-  margin-top: -2px !important;
-  overflow: hidden !important;
-  background: url('/images/battle/diablo2exp/images/blizz-logo.gif') left -30px / 116px 108px no-repeat !important;
+  background: url('/assets/blizz-clean.jpg') left top / 116px 78px no-repeat !important;
+}
+
+td:has(> a > img[src$="/blizz-logo.gif"]) > a > img[src$="/blizz-logo.gif"] {
+  visibility: hidden !important;
+  opacity: 0 !important;
 }
 
 td:has(> a > img[src$="/blizz-logo.gif"]) > a::before {

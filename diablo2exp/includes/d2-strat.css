@@ -42,8 +42,16 @@ body > table[height="18"][width="100%"] {
   display: none !important;
 }
 
-/* Image 3: hide the Diablo II artwork but preserve the right edge and
-   bottom trim that complete the menu frame. Keep the 116x82 slot. */
+/* Image 3: place the PD2 artwork in the original 116x82 logo slot.
+   The artwork occupies the upper 70px; the original image remains
+   clipped to its right edge and lower trim so the menu frame stays intact. */
+a[href*="games/d2"] {
+  display: block !important;
+  width: 116px !important;
+  height: 82px !important;
+  background: url('/assets/pd2-logo.jpg') left top / 116px 70px no-repeat !important;
+}
+
 img[name="logo"][src*="d2-logo-"] {
   visibility: visible !important;
   -webkit-clip-path: polygon(96% 0, 100% 0, 100% 100%, 0 100%, 0 84%, 96% 84%);

@@ -59,6 +59,8 @@ jobs:
           set -euxo pipefail
           mkdir -p assets
           base64 -d assets/pd2-logo.b64 > assets/pd2-logo.jpg
+          base64 -d assets/pd2-logo.b64 > assets/pd2-logo.jpg
+          base64 -d assets/blizz-clean.b64 > assets/blizz-clean.jpg
 
       - name: Apply requested visual cleanup
         shell: bash

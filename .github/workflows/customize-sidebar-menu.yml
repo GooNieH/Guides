@@ -32,15 +32,14 @@ jobs:
             done
           done
 
-      - name: Rebuild NEWS as SP CALCULATOR from original Diablo II letterforms
+      - name: Rebuild NEWS as SP CALCULATOR from original Diablo II letter cells
         shell: bash
         run: |
           set -euxo pipefail
           python - <<'PY'
           from pathlib import Path
-          from collections import defaultdict
           import numpy as np
-          from PIL import Image
+          from PIL import Image, ImageFilter
 
           SRC = Path('/tmp/classic-menu')
           OUT = Path('images/battle/diablo2exp/images/menu')
@@ -61,134 +60,163 @@ jobs:
               'files': 'FILES',
           }
 
-          RX0, RY0, RX1, RY1 = 16, 10, 98, 27
+          source_for = {
+              'S': ('files', 4),
+              'P': ('maps', 2),
+              'C': ('npcs', 2),
+              'A': ('maps', 1),
+              'L': ('files', 2),
+              'U': ('quests', 1),
+              'T': ('items', 1),
+              'O': ('monsters', 1),
+              'R': ('shrines', 2),
+          }
 
-          def rgb(path):
+          RX0, RY0, RX1, RY1 = 16, 10, 98, 27
+          RH, RW = RY1 - RY0, RX1 - RX0
+
+          def arr(path):
               return np.asarray(Image.open(path).convert('RGB'), dtype=np.int16)
 
-          def active_runs(mask):
-              cols = mask.any(axis=0)
-              runs = []
-              start = None
-              for x, on in enumerate(cols):
-                  if on and start is None:
-                      start = x
-                  elif not on and start is not None:
-                      runs.append((start, x))
-                      start = None
-              if start is not None:
-                  runs.append((start, len(cols)))
-              return runs
-
-          def make_state(state):
-              originals = {
-                  key: rgb(SRC / f'menu-{key}-{state}.gif')
+          images = {
+              state: {
+                  key: arr(SRC / f'menu-{key}-{state}.gif')
                   for key in labels
               }
+              for state in ('off', 'ovr', 'act')
+          }
 
-              regions = {
-                  key: img[RY0:RY1, RX0:RX1]
-                  for key, img in originals.items()
-              }
-              stack = np.stack(list(regions.values()), axis=0)
-              blank_region = np.median(stack, axis=0).astype(np.uint8)
+          blanks = {}
+          for state in ('off', 'ovr', 'act'):
+              regions = [
+                  img[RY0:RY1, RX0:RX1]
+                  for img in images[state].values()
+              ]
+              blanks[state] = np.median(np.stack(regions), axis=0).astype(np.uint8)
 
+          def overall_bounds(button):
+              region = images['off'][button][RY0:RY1, RX0:RX1]
+              bg = blanks['off'].astype(np.int16)
+              diff = np.max(np.abs(region - bg), axis=2)
+              mask = diff >= 48
+              col_counts = mask.sum(axis=0)
+              active = np.where(col_counts >= 2)[0]
+              if len(active) == 0:
+                  raise RuntimeError(f'No text span detected for {button}')
+              x0, x1 = int(active.min()), int(active.max()) + 1
+              n = len(labels[button])
+              pitch = (x1 - x0) / n
+              return x0, x1, pitch
+
+          spans = {button: overall_bounds(button) for button in labels}
+
+          def clean_off_mask(button, index):
+              x0, x1, pitch = spans[button]
+              ca = int(round(x0 + index * pitch))
+              cb = int(round(x0 + (index + 1) * pitch))
+              ca = max(0, ca - 1)
+              cb = min(RW, cb + 1)
+
+              region = images['off'][button][RY0:RY1, RX0:RX1]
+              bg = blanks['off'].astype(np.int16)
+              diff = np.max(np.abs(region - bg), axis=2)
+              m = (diff[:, ca:cb] >= 48).astype(np.uint8) * 255
+
+              pim = Image.fromarray(m, 'L')
+              dil = np.asarray(pim.filter(ImageFilter.MaxFilter(3))) > 0
+              ero = np.asarray(pim.filter(ImageFilter.MinFilter(3))) > 0
+              core = np.asarray(pim) > 0
+              keep = core & (dil | ero)
+
+              ys, xs = np.where(keep)
+              if len(xs) == 0:
+                  raise RuntimeError(f'No glyph mask for {button}[{index}]')
+
+              xa, xb = max(0, int(xs.min()) - 1), min(cb - ca, int(xs.max()) + 2)
+              ya, yb = max(0, int(ys.min()) - 1), min(RH, int(ys.max()) + 2)
+              return ca, cb, xa, xb, ya, yb, keep
+
+          geometry = {
+              ch: clean_off_mask(button, index)
+              for ch, (button, index) in source_for.items()
+          }
+
+          def make_glyph(state, ch):
+              button, index = source_for[ch]
+              ca, cb, xa, xb, ya, yb, off_keep = geometry[ch]
+
+              region = images[state][button][RY0:RY1, RX0:RX1]
+              bg = blanks[state].astype(np.int16)
+              state_diff = np.max(np.abs(region - bg), axis=2)
+              state_mask = state_diff[:, ca:cb] >= 24
+
+              off_mask = off_keep
+              dilated = np.asarray(
+                  Image.fromarray((off_mask * 255).astype(np.uint8), 'L')
+                  .filter(ImageFilter.MaxFilter(3))
+              ) > 0
+              mask = off_mask | (state_mask & dilated)
+
+              patch = region[ya:yb, ca+xa:ca+xb].astype(np.uint8)
+              pmask = mask[ya:yb, xa:xb]
+              return patch, pmask, ya
+
+          def make_state(state):
               news_path = SRC / f'menu-news-{state}.gif'
               original_news = Image.open(news_path)
               base = np.asarray(original_news.convert('RGB'), dtype=np.uint8).copy()
-              base[RY0:RY1, RX0:RX1] = blank_region
+              base[RY0:RY1, RX0:RX1] = blanks[state]
 
-              glyphs = defaultdict(list)
-              diagnostics = []
-
-              for key, label in labels.items():
-                  img = originals[key]
-                  region = regions[key]
-                  bg = blank_region.astype(np.int16)
-                  diff = np.max(np.abs(region.astype(np.int16) - bg), axis=2)
-                  mask = diff >= 48
-                  col_counts = mask.sum(axis=0)
-                  mask[:, col_counts < 2] = False
-
-                  runs = active_runs(mask)
-                  chars = [c for c in label if c != ' ']
-                  while len(runs) > len(chars):
-                      gaps = [runs[i+1][0] - runs[i][1] for i in range(len(runs)-1)]
-                      j = int(np.argmin(gaps))
-                      runs[j:j+2] = [(runs[j][0], runs[j+1][1])]
-
-                  diagnostics.append(f'{state} {key}: runs={len(runs)} chars={len(chars)} {runs}')
-                  if len(runs) != len(chars):
-                      continue
-
-                  for ch, (xa, xb) in zip(chars, runs):
-                      submask = mask[:, xa:xb]
-                      ys, xs = np.where(submask)
-                      if len(xs) == 0:
-                          continue
-                      ya, yb = int(ys.min()), int(ys.max()) + 1
-                      xa2, xb2 = int(xs.min()), int(xs.max()) + 1
-                      patch = region[ya:yb, xa+xa2:xa+xb2].astype(np.uint8)
-                      pmask = submask[ya:yb, xa2:xb2]
-                      glyphs[ch].append((patch, pmask))
-
-              required = set(TARGET.replace(' ', ''))
-              missing = sorted(required - set(glyphs))
-              print('\n'.join(diagnostics))
-              if missing:
-                  raise SystemExit(f'Missing extracted glyphs for state {state}: {missing}')
-
-              chosen = {ch: glyphs[ch][0] for ch in required}
-              gap = 1
-              space = 4
               pieces = []
               total_w = 0
+              gap = 1
+              space_w = 3
+
               for ch in TARGET:
                   if ch == ' ':
-                      pieces.append((None, None, space))
-                      total_w += space
+                      pieces.append((None, None, None, space_w))
+                      total_w += space_w
                   else:
-                      patch, pmask = chosen[ch]
+                      patch, pmask, y = make_glyph(state, ch)
                       w = patch.shape[1]
-                      pieces.append((patch, pmask, w))
+                      pieces.append((patch, pmask, y, w))
                       total_w += w
                   total_w += gap
               total_w -= gap
 
-              max_w = RX1 - RX0 - 6
-              scale = min(1.0, max_w / total_w)
-              canvas_h = RY1 - RY0
-              text_layer = np.zeros((canvas_h, total_w, 3), dtype=np.uint8)
-              alpha = np.zeros((canvas_h, total_w), dtype=np.uint8)
+              layer = np.zeros((RH, total_w, 3), dtype=np.uint8)
+              alpha = np.zeros((RH, total_w), dtype=np.uint8)
 
               x = 0
-              baseline = 15
-              for patch, pmask, w in pieces:
+              for patch, pmask, y, w in pieces:
                   if patch is None:
                       x += w + gap
                       continue
                   h = patch.shape[0]
-                  y = max(0, min(canvas_h - h, baseline - h))
-                  text_layer[y:y+h, x:x+w] = patch
-                  alpha[y:y+h, x:x+w][pmask] = 255
+                  py = max(0, min(RH - h, y))
+                  layer[py:py+h, x:x+w] = patch
+                  alpha[py:py+h, x:x+w][pmask] = 255
                   x += w + gap
 
-              layer_img = Image.fromarray(text_layer, 'RGB')
+              max_w = RW - 4
+              layer_img = Image.fromarray(layer, 'RGB')
               alpha_img = Image.fromarray(alpha, 'L')
-              if scale < 1.0:
-                  new_w = max(1, int(round(total_w * scale)))
-                  layer_img = layer_img.resize((new_w, canvas_h), Image.Resampling.NEAREST)
-                  alpha_img = alpha_img.resize((new_w, canvas_h), Image.Resampling.NEAREST)
+              if total_w > max_w:
+                  new_w = max_w
+                  layer_img = layer_img.resize((new_w, RH), Image.Resampling.NEAREST)
+                  alpha_img = alpha_img.resize((new_w, RH), Image.Resampling.NEAREST)
 
               result = Image.fromarray(base, 'RGB')
-              x0 = (116 - layer_img.width) // 2
-              result.paste(layer_img, (x0, RY0), alpha_img)
+              paste_x = (116 - layer_img.width) // 2
+              result.paste(layer_img, (paste_x, RY0), alpha_img)
 
-              palette = original_news.convert('P')
-              result = result.quantize(palette=palette, dither=Image.Dither.NONE)
+              result = result.quantize(
+                  palette=original_news.convert('P'),
+                  dither=Image.Dither.NONE
+              )
               out_path = OUT / f'menu-news-{state}.gif'
               result.save(out_path, format='GIF', optimize=False)
-              print(f'wrote {out_path}: {result.size}, text_width={layer_img.width}px')
+              print(f'{state}: {out_path} text={layer_img.width}px')
 
           for state in ('off', 'ovr', 'act'):
               make_state(state)
@@ -204,5 +232,5 @@ jobs:
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m 'Match SP Calculator button to classic menu lettering'
+          git commit -m 'Rebuild SP Calculator from classic Diablo II glyphs'
           git push
